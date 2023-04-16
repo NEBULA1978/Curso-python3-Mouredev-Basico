@@ -1,16 +1,72 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat en tiempo real con FastAPI</title>
+    </head>
+    <body>
+        <h1>Chat en tiempo real con FastAPI</h1>
+        <form id="messageForm" action="javascript:void(0);">
+            <input type="text" id="messageInput" autocomplete="off" placeholder="Escribe un mensaje..."/>
+            <button>Enviar</button>
+        </form>
+        <ul id="messages"></ul>
+        <script>
+            const ws = new WebSocket("ws://localhost:8000/ws");
+            ws.onmessage = (event) => {
+                const messageElement = document.createElement("li");
+                messageElement.innerText = event.data;
+                document.getElementById("messages").appendChild(messageElement);
+            };
+            document.getElementById("messageForm").addEventListener("submit", (event) => {
+                event.preventDefault();
+                const message = document.getElementById("messageInput").value;
+                ws.send(message);
+                document.getElementById("messageInput").value = "";
+            });
+        </script>
+    </body>
+</html>
+"""
+
 
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+def get():
+    return HTMLResponse(html)
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str = None):
-    return {"item_id": item_id, "q": q}
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Mensaje: {data}")
+
+# Ejecutar el servidor Uvicorn:       
+# uvicorn main: app - -reload
+
+# //////////////////////////////////////////
+# //////////////////////////////////////////
+
+# EJEMPLO2
+# from fastapi import FastAPI
+
+# app = FastAPI()
+
+
+# @app.get("/")
+# def read_root():
+#     return {"Hello": "World"}
+
+
+# @app.get("/items/{item_id}")
+# def read_item(item_id: int, q: str = None):
+#     return {"item_id": item_id, "q": q}
 
 
 # Este código crea una instancia de FastAPI y define dos rutas:
