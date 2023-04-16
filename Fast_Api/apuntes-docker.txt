@@ -1,0 +1,100 @@
+Para crear un contenedor Docker para la última aplicación, sigue estos pasos:
+
+    Crea un archivo llamado Dockerfile en la raíz de tu proyecto con el siguiente contenido:
+
+Dockerfile
+
+# Use the official Python image as the base image
+FROM python:3.9
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the requirements.txt file into the container
+COPY requirements.txt .
+
+# Install the dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code into the container
+COPY . .
+
+# Expose the port the app will run on
+EXPOSE 8000
+
+# Start the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+Asegúrate de reemplazar main en main:app con el nombre de tu archivo principal si es diferente.
+
+    Crea un archivo requirements.txt en la raíz de tu proyecto con las dependencias de tu aplicación. Por ejemplo:
+
+css
+
+fastapi[all]
+motor
+
+    Ejecuta el siguiente comando en la terminal para construir la imagen de Docker:
+
+bash
+
+docker build -t my-fastapi-app .
+
+Reemplaza my-fastapi-app con el nombre que desees para tu imagen de Docker.
+
+    Una vez que la imagen se haya construido correctamente, puedes ejecutar un contenedor utilizando la siguiente instrucción:
+
+bash
+
+docker run -d --name my-fastapi-app-container -p 8000:8000 my-fastapi-app
+
+Reemplaza my-fastapi-app-container con el nombre que desees para tu contenedor de Docker y my-fastapi-app con el nombre de la imagen que creaste en el paso 3.
+
+Ahora, tu aplicación FastAPI debería estar ejecutándose en un contenedor Docker y estar disponible en http://localhost:8000.
+
+Para que la aplicación se comunique con el contenedor de MongoDB, asegúrate de cambiar la cadena de conexión en tu código para apuntar al contenedor de MongoDB en lugar de localhost. Para hacer esto, modifica la línea que crea el cliente de Motor en la función get_db:
+
+python
+
+client = AsyncIOMotorClient("mongodb://root:example@mongo:27017")
+
+Aquí, reemplazamos localhost con mongo, que es el nombre del servicio definido en el archivo docker-compose.yml.
+
+Luego, crea un archivo docker-compose.yml en la raíz de tu proyecto que incluya tanto la aplicación FastAPI como MongoDB y mongo-express:
+
+yaml
+
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo-data:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongo
+
+  fastapi_app:
+    build: .
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+
+Ahora, ejecuta `docker-compose up -d
