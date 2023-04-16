@@ -39,17 +39,35 @@ connected_websockets: List[WebSocket] = []
 
 
 async def broadcast_message(message: str):
+    """
+    Send a message to all connected WebSockets.
+
+    Args:
+        message (str): The message to be broadcasted.
+    """
     for websocket in connected_websockets:
         await websocket.send_text(message)
 
 
 @app.get("/")
 def get():
+    """
+    Serve the chat HTML page.
+    
+    Returns:
+        HTMLResponse: The chat HTML page.
+    """
     return HTMLResponse(html)
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint to handle chat connections and messages.
+
+    Args:
+        websocket (WebSocket): The WebSocket instance for the connected client.
+    """
     await websocket.accept()
     connected_websockets.append(websocket)
     try:
@@ -58,6 +76,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await broadcast_message(f"Mensaje: {data}")
     except WebSocketDisconnect:
         connected_websockets.remove(websocket)
+
 
 # Con estos cambios, el código ahora mantiene una lista de connected_websockets, que contiene todos los WebSockets conectados. Cuando un cliente envía un mensaje, este se transmite a todos los WebSockets conectados utilizando la función broadcast_message. Además, si un cliente se desconecta, su WebSocket se elimina de la lista connected_websockets.
 
