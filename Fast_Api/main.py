@@ -1,5 +1,6 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+from typing import List
 
 app = FastAPI()
 
@@ -34,6 +35,13 @@ html = """
 </html>
 """
 
+connected_websockets: List[WebSocket] = []
+
+
+async def broadcast_message(message: str):
+    for websocket in connected_websockets:
+        await websocket.send_text(message)
+
 
 @app.get("/")
 def get():
@@ -43,9 +51,70 @@ def get():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(f"Mensaje: {data}")
+    connected_websockets.append(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await broadcast_message(f"Mensaje: {data}")
+    except WebSocketDisconnect:
+        connected_websockets.remove(websocket)
+
+# Con estos cambios, el código ahora mantiene una lista de connected_websockets, que contiene todos los WebSockets conectados. Cuando un cliente envía un mensaje, este se transmite a todos los WebSockets conectados utilizando la función broadcast_message. Además, si un cliente se desconecta, su WebSocket se elimina de la lista connected_websockets.
+
+# Guarda los cambios en main.py y reinicia el servidor FastAPI ejecutando uvicorn main: app - -reload. Ahora, cuando abras dos chats en diferentes pestañas o navegadores y envíes un mensaje desde uno de ellos, deberías ver el mensaje en ambos chats.
+# ///////////////////////////
+# ///////////////////////////
+
+# EJEJMPLO
+
+# from fastapi import FastAPI, WebSocket
+# from fastapi.responses import HTMLResponse
+
+# app = FastAPI()
+
+# html = """
+# <!DOCTYPE html>
+# <html>
+#     <head>
+#         <title>Chat en tiempo real con FastAPI</title>
+#     </head>
+#     <body>
+#         <h1>Chat en tiempo real con FastAPI</h1>
+#         <form id="messageForm" action="javascript:void(0);">
+#             <input type="text" id="messageInput" autocomplete="off" placeholder="Escribe un mensaje..."/>
+#             <button>Enviar</button>
+#         </form>
+#         <ul id="messages"></ul>
+#         <script>
+#             const ws = new WebSocket("ws://localhost:8000/ws");
+#             ws.onmessage = (event) => {
+#                 const messageElement = document.createElement("li");
+#                 messageElement.innerText = event.data;
+#                 document.getElementById("messages").appendChild(messageElement);
+#             };
+#             document.getElementById("messageForm").addEventListener("submit", (event) => {
+#                 event.preventDefault();
+#                 const message = document.getElementById("messageInput").value;
+#                 ws.send(message);
+#                 document.getElementById("messageInput").value = "";
+#             });
+#         </script>
+#     </body>
+# </html>
+# """
+
+
+# @app.get("/")
+# def get():
+#     return HTMLResponse(html)
+
+
+# @app.websocket("/ws")
+# async def websocket_endpoint(websocket: WebSocket):
+#     await websocket.accept()
+#     while True:
+#         data = await websocket.receive_text()
+#         await websocket.send_text(f"Mensaje: {data}")
 
 # Ejecutar el servidor Uvicorn:       
 # uvicorn main: app - -reload
